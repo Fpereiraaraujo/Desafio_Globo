@@ -1,5 +1,6 @@
 package com.fernando.sistema_assinaturas.core.service;
 
+import com.fernando.sistema_assinaturas.core.domain.model.CheckoutResult;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentResult;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentTransaction;
@@ -45,9 +46,10 @@ public class SubscriptionRenewalProcessingService {
 		Instant now = Instant.now(clock);
 		LocalDate renewalDate = subscription.getExpirationDate();
 		String idempotencyKey = subscription.getId() + ":" + renewalDate;
-		PaymentResult paymentResult = paymentGateway.charge(subscription, idempotencyKey);
-		PaymentStatus paymentStatus = paymentResult.status();
-		boolean approved = paymentResult.isApproved();
+		CheckoutResult checkoutResult = paymentGateway.createCheckout(subscription, idempotencyKey);
+		PaymentStatus paymentStatus = checkoutResult.status();
+		boolean approved = checkoutResult.status() == PaymentStatus.APPROVED;
+		boolean pending = checkoutResult.status() == PaymentStatus.PENDING;
 
 		PaymentTransaction transaction = PaymentTransaction.builder()
 			.id(UUID.randomUUID())
@@ -55,7 +57,7 @@ public class SubscriptionRenewalProcessingService {
 			.idempotencyKey(idempotencyKey)
 			.amountCents(subscription.getPlan().monthlyPriceCents())
 			.status(paymentStatus)
-			.providerTransactionId(paymentResult.providerTransactionId())
+			.providerTransactionId(checkoutResult.providerTransactionId())
 			.createdAt(now)
 			.completedAt(approved ? now : null)
 			.build();
@@ -65,9 +67,9 @@ public class SubscriptionRenewalProcessingService {
 			.subscriptionId(subscription.getId())
 			.renewalDate(renewalDate)
 			.attemptNumber(attemptNumber)
-			.status(approved ? RenewalAttemptStatus.SUCCEEDED : RenewalAttemptStatus.FAILED)
+			.status(approved ? RenewalAttemptStatus.SUCCEEDED : pending ? RenewalAttemptStatus.PENDING : RenewalAttemptStatus.FAILED)
 			.idempotencyKey(idempotencyKey + ":attempt:" + attemptNumber)
-			.failureReason(approved ? null : paymentResult.message())
+			.failureReason(approved || pending ? null : checkoutResult.message())
 			.attemptedAt(now)
 			.build();
 

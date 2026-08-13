@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentResult;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
+import com.fernando.sistema_assinaturas.core.domain.model.CheckoutResult;
 import com.fernando.sistema_assinaturas.core.domain.model.Plan;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalAttemptStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalPolicy;
@@ -42,22 +43,22 @@ class SubscriptionRenewalProcessingServiceTest {
 	@Test
 	void approvesPaymentAndMovesSubscriptionToNextCycle() {
 		Subscription subscription = subscription();
-		when(paymentGateway.charge(subscription, subscription.getId() + ":2026-09-12"))
-			.thenReturn(new PaymentResult(PaymentStatus.APPROVED, "tx-1", "approved"));
+		when(paymentGateway.createCheckout(subscription, subscription.getId() + ":2026-09-12"))
+			.thenReturn(new CheckoutResult(PaymentStatus.APPROVED, "https://checkout.test/1", "order-1", "tx-1", "approved"));
 
 		var result = service.process(subscription, 1);
 
 		assertThat(result.succeeded()).isTrue();
 		assertThat(result.attempt().getStatus()).isEqualTo(RenewalAttemptStatus.SUCCEEDED);
 		assertThat(result.subscription().getExpirationDate()).isEqualTo(LocalDate.of(2026, 10, 12));
-		verify(paymentGateway).charge(subscription, subscription.getId() + ":2026-09-12");
+		verify(paymentGateway).createCheckout(subscription, subscription.getId() + ":2026-09-12");
 	}
 
 	@Test
 	void keepsSubscriptionOnPaymentFailure() {
 		Subscription subscription = subscription();
-		when(paymentGateway.charge(subscription, subscription.getId() + ":2026-09-12"))
-			.thenReturn(new PaymentResult(PaymentStatus.DECLINED, null, "declined"));
+		when(paymentGateway.createCheckout(subscription, subscription.getId() + ":2026-09-12"))
+			.thenReturn(new CheckoutResult(PaymentStatus.DECLINED, null, "order-1", null, "declined"));
 
 		var result = service.process(subscription, 3);
 

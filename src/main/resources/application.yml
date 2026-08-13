@@ -25,3 +25,9 @@ management:
 subscriptions:
   renewal:
     cron: ${SUBSCRIPTIONS_RENEWAL_CRON:0 0 2 * * *}
+
+infinitepay:
+  api-base-url: ${INFINITEPAY_API_BASE_URL:https://api.checkout.infinitepay.io}
+  handle: ${INFINITEPAY_HANDLE:fernando-de-9n6}
+  redirect-url: ${INFINITEPAY_REDIRECT_URL:http://localhost:8080/api/v1/payments/return}
+  webhook-url: ${INFINITEPAY_WEBHOOK_URL:http://localhost:8080/api/v1/payments/webhook}

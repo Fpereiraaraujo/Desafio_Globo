@@ -12,6 +12,7 @@ import com.fernando.sistema_assinaturas.entrypoint.api.exception.ResourceNotFoun
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class CreateSubscriptionUseCaseImp implements CreateSubscriptionUseCase {
 	private final SubscriptionCreationService subscriptionCreationService;
 
 	@Override
+	@Transactional
 	public Subscription execute(CreateSubscriptionParam param) {
 		UUID userId = param == null ? null : param.userId();
 		if (userId == null || !userRepository.existsById(userId)) {

@@ -8,6 +8,7 @@ import com.fernando.sistema_assinaturas.dataprovider.database.mapper.UserDatabas
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class RegisterUserUseCaseImp implements RegisterUserUseCase {
 	private final UserRegistrationService userRegistrationService;
 
 	@Override
+	@Transactional
 	public User execute(RegisterUserParam param) {
 		User user = userRegistrationService.create(param);
 		if (userRepository.existsByEmail(user.getEmail())) {
