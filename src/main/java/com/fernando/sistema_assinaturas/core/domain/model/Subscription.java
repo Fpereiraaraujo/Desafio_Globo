@@ -1,6 +1,7 @@
 package com.fernando.sistema_assinaturas.core.domain.model;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Value;
@@ -15,6 +16,7 @@ public class Subscription {
 	LocalDate startDate;
 	LocalDate expirationDate;
 	SubscriptionStatus status;
+	Instant canceledAt;
 
 	public static Subscription create(UUID id, UUID userId, Plan plan, LocalDate startDate) {
 		if (id == null || userId == null) {
@@ -38,9 +40,16 @@ public class Subscription {
 	}
 
 	public Subscription cancel() {
+		return cancel(Instant.now());
+	}
+
+	public Subscription cancel(Instant canceledAt) {
 		if (status != SubscriptionStatus.ACTIVE) {
 			throw new IllegalStateException("Only active subscriptions can be canceled");
 		}
-		return toBuilder().status(SubscriptionStatus.CANCELED).build();
+		if (canceledAt == null) {
+			throw new IllegalArgumentException("Cancellation time is required");
+		}
+		return toBuilder().status(SubscriptionStatus.CANCELED).canceledAt(canceledAt).build();
 	}
 }

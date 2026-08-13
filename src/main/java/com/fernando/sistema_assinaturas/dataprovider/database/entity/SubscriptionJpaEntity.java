@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,4 +45,7 @@ public class SubscriptionJpaEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private SubscriptionStatus status;
+
+	@Column(name = "canceled_at")
+	private Instant canceledAt;
 }

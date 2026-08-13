@@ -16,6 +16,7 @@ public final class SubscriptionDatabaseMapper {
 			.startDate(subscription.getStartDate())
 			.expirationDate(subscription.getExpirationDate())
 			.status(subscription.getStatus())
+			.canceledAt(subscription.getCanceledAt())
 			.build();
 	}
 
@@ -27,6 +28,7 @@ public final class SubscriptionDatabaseMapper {
 			.startDate(entity.getStartDate())
 			.expirationDate(entity.getExpirationDate())
 			.status(entity.getStatus())
+			.canceledAt(entity.getCanceledAt())
 			.build();
 	}
 }
