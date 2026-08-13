@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fernando.sistema_assinaturas.core.domain.model.PaymentResult;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.CheckoutResult;
 import com.fernando.sistema_assinaturas.core.domain.model.Plan;

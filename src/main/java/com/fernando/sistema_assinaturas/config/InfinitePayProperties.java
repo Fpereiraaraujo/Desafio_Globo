@@ -6,8 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record InfinitePayProperties(
 	String apiBaseUrl,
 	String handle,
-	String redirectUrl,
-	String webhookUrl
+	String redirectUrl
 ) {
 	public String normalizedBaseUrl() {
 		if (apiBaseUrl == null || apiBaseUrl.isBlank()) {

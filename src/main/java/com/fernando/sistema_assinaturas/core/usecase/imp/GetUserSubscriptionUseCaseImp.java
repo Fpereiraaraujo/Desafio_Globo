@@ -10,6 +10,7 @@ import com.fernando.sistema_assinaturas.entrypoint.api.exception.ResourceNotFoun
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +19,7 @@ public class GetUserSubscriptionUseCaseImp implements GetUserSubscriptionUseCase
 	private final SubscriptionRepository subscriptionRepository;
 
 	@Override
+	@Cacheable(cacheNames = "subscriptionsByUser", key = "#param.userId()", cacheManager = "redisCacheManager")
 	public Subscription execute(GetUserSubscriptionParam param) {
 		UUID userId = param == null ? null : param.userId();
 		if (userId == null) {

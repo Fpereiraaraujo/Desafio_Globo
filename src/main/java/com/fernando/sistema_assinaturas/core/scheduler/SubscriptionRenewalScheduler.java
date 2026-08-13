@@ -7,7 +7,7 @@ import com.fernando.sistema_assinaturas.dataprovider.database.repository.Renewal
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.SubscriptionRepository;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.Clock;
+import com.fernando.sistema_assinaturas.core.domain.model.RenewalPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -47,19 +47,24 @@ public class SubscriptionRenewalScheduler {
 	@Scheduled(cron = "${subscriptions.renewal.cron:0 0 2 * * *}")
 	public void processDueSubscriptions() {
 		LocalDate today = LocalDate.now(clock);
+		int maxAttempts = RenewalPolicy.defaultPolicy().maxAttempts();
 		subscriptionRepository.findAllByStatusAndExpirationDateLessThanEqual(SubscriptionStatus.ACTIVE, today)
 			.forEach(subscription -> {
 				int attempts = renewalAttemptRepository.countBySubscriptionIdAndRenewalDate(
 					subscription.getId(), subscription.getExpirationDate()
 				);
-				if (attempts >= 3) {
+				if (attempts >= maxAttempts) {
 					log.warn("Renewal attempt limit already reached for subscription {}", subscription.getId());
 					return;
 				}
-				processRenewalUseCase.execute(new ProcessRenewalParam(
-					subscription.getId(),
-					subscription.getExpirationDate(), attempts + 1
-				));
+				try {
+					processRenewalUseCase.execute(new ProcessRenewalParam(
+						subscription.getId(),
+						subscription.getExpirationDate(), attempts + 1
+					));
+				} catch (RuntimeException exception) {
+					log.error("Could not process renewal for subscription {}", subscription.getId(), exception);
+				}
 			});
 	}
 }

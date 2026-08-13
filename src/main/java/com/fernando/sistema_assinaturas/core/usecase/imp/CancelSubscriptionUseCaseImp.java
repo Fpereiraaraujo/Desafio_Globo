@@ -11,6 +11,8 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,10 @@ public class CancelSubscriptionUseCaseImp implements CancelSubscriptionUseCase {
 
 	@Override
 	@Transactional
+	@Caching(evict = {
+		@CacheEvict(cacheNames = "subscriptionsById", key = "#param.subscriptionId()", cacheManager = "redisCacheManager"),
+		@CacheEvict(cacheNames = "subscriptionsByUser", allEntries = true, cacheManager = "redisCacheManager")
+	})
 	public Subscription execute(CancelSubscriptionParam param) {
 		UUID subscriptionId = param == null ? null : param.subscriptionId();
 		if (subscriptionId == null) {

@@ -25,7 +25,6 @@ public class InfinitePayClient {
 			.body(new CreateLinkRequest(
 				properties.handle(),
 				properties.redirectUrl(),
-				properties.webhookUrl(),
 				orderNsu,
 				List.of(new Item(1, amountCents, description))
 			))
@@ -33,19 +32,9 @@ public class InfinitePayClient {
 			.body(CreateLinkResponse.class);
 	}
 
-	public PaymentCheckResponse checkPayment(String orderNsu, String transactionNsu, String slug) {
-		return restClient.post()
-			.uri("/payment_check")
-			.contentType(MediaType.APPLICATION_JSON)
-			.body(new PaymentCheckRequest(properties.handle(), orderNsu, transactionNsu, slug))
-			.retrieve()
-			.body(PaymentCheckResponse.class);
-	}
-
 	public record CreateLinkRequest(
 		String handle,
 		@JsonProperty("redirect_url") String redirectUrl,
-		@JsonProperty("webhook_url") String webhookUrl,
 		@JsonProperty("order_nsu") String orderNsu,
 		List<Item> items
 	) {
@@ -57,20 +46,4 @@ public class InfinitePayClient {
 	public record CreateLinkResponse(String url) {
 	}
 
-	public record PaymentCheckRequest(
-		String handle,
-		@JsonProperty("order_nsu") String orderNsu,
-		@JsonProperty("transaction_nsu") String transactionNsu,
-		String slug
-	) {
-	}
-
-	public record PaymentCheckResponse(
-		boolean success,
-		boolean paid,
-		int amount,
-		@JsonProperty("paid_amount") int paidAmount,
-		@JsonProperty("transaction_nsu") String transactionNsu
-	) {
-	}
 }

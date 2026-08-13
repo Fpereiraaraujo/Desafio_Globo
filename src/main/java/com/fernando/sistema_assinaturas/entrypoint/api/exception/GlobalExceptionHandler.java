@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -44,6 +45,14 @@ public class GlobalExceptionHandler {
 			details
 		);
 		return ResponseEntity.badRequest().body(error);
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiErrorResponse> handleTypeMismatch(
+		MethodArgumentTypeMismatchException exception,
+		HttpServletRequest request
+	) {
+		return response(HttpStatus.BAD_REQUEST, "Invalid request parameter", request.getRequestURI());
 	}
 
 	private ResponseEntity<ApiErrorResponse> response(HttpStatus status, String message, String path) {
