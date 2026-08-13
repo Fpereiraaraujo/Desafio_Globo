@@ -9,6 +9,13 @@ const PLAN_DETAILS = {
   FAMILIA: { name: 'Família', price: '59,90', description: 'Mais pessoas no mesmo plano.', accent: 'bg-amber-300' },
 }
 
+const STATUS_LABEL = {
+  ACTIVE: 'ATIVA',
+  CANCELED: 'CANCELADA',
+  SUSPENDED: 'SUSPENSA',
+  EXPIRED: 'EXPIRADA',
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options.headers },
@@ -26,6 +33,10 @@ function formatDate(value) {
 }
 
 function App() {
+	if (window.location.pathname === '/checkout-demo') {
+		return <CheckoutDemo />
+	}
+
   const [plans, setPlans] = useState(Object.keys(PLAN_DETAILS))
   const [subscription, setSubscription] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -106,7 +117,14 @@ function App() {
     try {
       const checkout = await request(`/subscriptions/${subscription.id}/checkout`, { method: 'POST' })
       if (!checkout.checkoutUrl) throw new Error('Checkout temporariamente indisponível.')
-      window.open(checkout.checkoutUrl, '_blank', 'noopener,noreferrer')
+      const checkoutUrl = checkout.checkoutUrl.startsWith('mock://')
+        ? `${window.location.origin}/checkout-demo?${new URLSearchParams({
+          plan: subscription.plan,
+          amount: subscription.monthlyPriceCents,
+          order: checkout.orderNsu,
+        })}`
+        : checkout.checkoutUrl
+      window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
       setNotice({ type: 'success', message: 'Checkout aberto em uma nova aba.' })
     } catch (error) {
       setNotice({ type: 'error', message: error.message })
@@ -160,8 +178,8 @@ function App() {
                     <h2 className="text-3xl font-black text-stone-900">{currentPlan?.name}</h2>
                     <p className="mt-1 text-stone-500">R$ {currentPlan?.price}/mês</p>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${subscription.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
-                    {subscription.status === 'ACTIVE' ? 'ATIVA' : 'CANCELADA'}
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${subscription.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : subscription.status === 'SUSPENDED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-900'}`}>
+                    {STATUS_LABEL[subscription.status] ?? subscription.status}
                   </span>
                 </div>
                 <div className="mt-8 rounded-2xl bg-stone-50 p-4 text-sm">
@@ -227,3 +245,37 @@ function App() {
 }
 
 export default App
+
+function CheckoutDemo() {
+	const params = new URLSearchParams(window.location.search)
+	const plan = params.get('plan') ?? 'PREMIUM'
+	const amount = Number(params.get('amount') ?? 3990) / 100
+	const order = params.get('order') ?? 'pedido-demo'
+
+	return (
+		<main className="grid min-h-screen place-items-center bg-stone-100 px-5 py-10">
+			<section className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-stone-900/10">
+				<div className="bg-[#5b2c83] px-7 py-8 text-white">
+					<p className="text-sm font-bold uppercase tracking-[0.18em] text-violet-200">InfinitePay</p>
+					<h1 className="mt-2 text-2xl font-black">Checkout demonstrativo</h1>
+					<p className="mt-2 text-sm text-violet-100">Integração simulada para apresentação.</p>
+				</div>
+				<div className="p-7">
+					<div className="flex items-center justify-between border-b border-stone-100 pb-5">
+						<div>
+							<p className="font-bold text-stone-900">Assinatura {PLAN_DETAILS[plan]?.name ?? plan}</p>
+							<p className="mt-1 text-xs text-stone-500">Pedido {order}</p>
+						</div>
+						<p className="text-xl font-black text-stone-900">{amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+					</div>
+					<p className="mt-6 text-sm font-bold text-stone-800">Selecione como deseja pagar</p>
+					<div className="mt-3 grid gap-3">
+						<button className="rounded-xl border border-stone-200 px-4 py-3 text-left text-sm font-bold text-stone-800">Pix</button>
+						<button className="rounded-xl border border-stone-200 px-4 py-3 text-left text-sm font-bold text-stone-800">Cartão de crédito</button>
+					</div>
+					<button onClick={() => window.close()} className="mt-6 w-full rounded-xl bg-[#5b2c83] px-4 py-3 text-sm font-bold text-white">Concluir demonstração</button>
+				</div>
+			</section>
+		</main>
+	)
+}

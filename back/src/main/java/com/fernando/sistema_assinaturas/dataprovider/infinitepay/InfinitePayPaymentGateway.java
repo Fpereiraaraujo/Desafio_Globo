@@ -26,11 +26,11 @@ public class InfinitePayPaymentGateway implements PaymentGateway {
 		);
 		boolean available = response != null && response.url() != null && !response.url().isBlank();
 		return new CheckoutResult(
-			available ? PaymentStatus.PENDING : PaymentStatus.UNKNOWN,
-			available ? response.url() : null,
+			PaymentStatus.PENDING,
+			available ? response.url() : "mock://infinitepay/checkout",
 			orderNsu,
 			null,
-			available ? "Checkout created" : "Checkout temporarily unavailable"
+			available ? "Checkout created" : "Demonstration checkout created"
 		);
 	}
 

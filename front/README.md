@@ -1,10 +1,16 @@
 # Frontend
 
-Interface demonstrativa feita com React, Vite e Tailwind CSS.
+Interface demonstrativa em React + Tailwind CSS para apresentar o backend.
 
 ```bash
 npm install
 npm run dev
 ```
 
-O frontend inicia em `http://localhost:5173` e usa, por padrão, a API em `http://localhost:8080/api/v1`. Para alterar essa URL, copie `.env.example` para `.env` e ajuste `VITE_API_URL`.
+Abra `http://localhost:5173`. A API deve estar em execução em `http://localhost:8080`.
+
+Para usar outra URL, crie um arquivo `.env` com:
+
+```env
+VITE_API_URL=http://localhost:8080/api/v1
+```
