@@ -6,6 +6,7 @@ import com.fernando.sistema_assinaturas.core.domain.param.GetUserSubscriptionPar
 import com.fernando.sistema_assinaturas.core.usecase.GetUserSubscriptionUseCase;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.SubscriptionDatabaseMapper;
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.SubscriptionRepository;
+import com.fernando.sistema_assinaturas.entrypoint.api.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,6 @@ public class GetUserSubscriptionUseCaseImp implements GetUserSubscriptionUseCase
 
 		return subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
 			.map(SubscriptionDatabaseMapper::toDomain)
-			.orElseThrow(() -> new IllegalArgumentException("Active subscription not found"));
+			.orElseThrow(() -> new ResourceNotFoundException("Active subscription not found"));
 	}
 }

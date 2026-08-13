@@ -5,6 +5,7 @@ import com.fernando.sistema_assinaturas.core.domain.param.GetSubscriptionParam;
 import com.fernando.sistema_assinaturas.core.usecase.GetSubscriptionUseCase;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.SubscriptionDatabaseMapper;
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.SubscriptionRepository;
+import com.fernando.sistema_assinaturas.entrypoint.api.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,6 @@ public class GetSubscriptionUseCaseImp implements GetSubscriptionUseCase {
 
 		return subscriptionRepository.findById(subscriptionId)
 			.map(SubscriptionDatabaseMapper::toDomain)
-			.orElseThrow(() -> new IllegalArgumentException("Subscription not found"));
+			.orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
 	}
 }

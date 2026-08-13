@@ -5,6 +5,7 @@ import com.fernando.sistema_assinaturas.core.domain.param.CancelSubscriptionPara
 import com.fernando.sistema_assinaturas.core.usecase.CancelSubscriptionUseCase;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.SubscriptionDatabaseMapper;
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.SubscriptionRepository;
+import com.fernando.sistema_assinaturas.entrypoint.api.exception.ResourceNotFoundException;
 import java.util.UUID;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class CancelSubscriptionUseCaseImp implements CancelSubscriptionUseCase {
 		}
 
 		var entity = subscriptionRepository.findById(subscriptionId)
-			.orElseThrow(() -> new IllegalArgumentException("Subscription not found"));
+			.orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
 		Subscription canceled = SubscriptionDatabaseMapper.toDomain(entity).cancel(Instant.now());
 		return SubscriptionDatabaseMapper.toDomain(
 			subscriptionRepository.save(SubscriptionDatabaseMapper.toEntity(canceled))
