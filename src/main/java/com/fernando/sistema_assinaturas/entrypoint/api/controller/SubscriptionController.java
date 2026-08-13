@@ -3,11 +3,15 @@ package com.fernando.sistema_assinaturas.entrypoint.api.controller;
 import com.fernando.sistema_assinaturas.core.usecase.CreateSubscriptionUseCase;
 import com.fernando.sistema_assinaturas.core.usecase.CancelSubscriptionUseCase;
 import com.fernando.sistema_assinaturas.core.usecase.GetSubscriptionUseCase;
+import com.fernando.sistema_assinaturas.core.usecase.GetUserSubscriptionUseCase;
 import com.fernando.sistema_assinaturas.core.domain.param.CancelSubscriptionParam;
 import com.fernando.sistema_assinaturas.core.domain.param.GetSubscriptionParam;
+import com.fernando.sistema_assinaturas.core.domain.param.GetUserSubscriptionParam;
 import com.fernando.sistema_assinaturas.entrypoint.api.dto.CreateSubscriptionRequest;
 import com.fernando.sistema_assinaturas.entrypoint.api.dto.SubscriptionResponse;
+import com.fernando.sistema_assinaturas.entrypoint.api.dto.GetUserSubscriptionResponse;
 import com.fernando.sistema_assinaturas.entrypoint.api.mapper.SubscriptionApiMapper;
+import com.fernando.sistema_assinaturas.entrypoint.api.mapper.SubscriptionQueryApiMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +31,7 @@ public class SubscriptionController {
 	private final CreateSubscriptionUseCase createSubscriptionUseCase;
 	private final CancelSubscriptionUseCase cancelSubscriptionUseCase;
 	private final GetSubscriptionUseCase getSubscriptionUseCase;
+	private final GetUserSubscriptionUseCase getUserSubscriptionUseCase;
 
 	@PostMapping
 	public ResponseEntity<SubscriptionResponse> create(
@@ -46,5 +51,11 @@ public class SubscriptionController {
 	public ResponseEntity<SubscriptionResponse> get(@PathVariable java.util.UUID subscriptionId) {
 		var subscription = getSubscriptionUseCase.execute(new GetSubscriptionParam(subscriptionId));
 		return ResponseEntity.ok(SubscriptionApiMapper.toResponse(subscription));
+	}
+
+	@GetMapping("/users/{userId}")
+	public ResponseEntity<GetUserSubscriptionResponse> getByUser(@PathVariable java.util.UUID userId) {
+		var subscription = getUserSubscriptionUseCase.execute(new GetUserSubscriptionParam(userId));
+		return ResponseEntity.ok(SubscriptionQueryApiMapper.toUserResponse(subscription));
 	}
 }

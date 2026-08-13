@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: sistema-assinaturas
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/assinaturas}
+    username: ${DATABASE_USERNAME:assinaturas}
+    password: ${DATABASE_PASSWORD:assinaturas}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
