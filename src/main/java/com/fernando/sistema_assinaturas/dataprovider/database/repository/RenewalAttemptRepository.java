@@ -1,0 +1,15 @@
+package com.fernando.sistema_assinaturas.dataprovider.database.repository;
+
+import com.fernando.sistema_assinaturas.dataprovider.database.entity.RenewalAttemptJpaEntity;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface RenewalAttemptRepository extends JpaRepository<RenewalAttemptJpaEntity, UUID> {
+
+	List<RenewalAttemptJpaEntity> findAllBySubscriptionIdAndRenewalDateOrderByAttemptNumberAsc(
+		UUID subscriptionId,
+		LocalDate renewalDate
+	);
+}
