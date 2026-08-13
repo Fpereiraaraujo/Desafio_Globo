@@ -26,6 +26,11 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+### Frontend ###
+front/node_modules/
+front/dist/
+front/.env
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

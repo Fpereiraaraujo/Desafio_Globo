@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: sistema-assinaturas
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/assinaturas}
+    username: ${DATABASE_USERNAME:assinaturas}
+    password: ${DATABASE_PASSWORD:assinaturas}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+resilience4j:
+  retry:
+    instances:
+      infinitePay:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - org.springframework.web.client.RestClientException
+  circuitbreaker:
+    instances:
+      infinitePay:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+
+subscriptions:
+  renewal:
+    cron: ${SUBSCRIPTIONS_RENEWAL_CRON:0 0 2 * * *}
+
+infinitepay:
+  api-base-url: ${INFINITEPAY_API_BASE_URL:https://api.checkout.infinitepay.io}
+  handle: ${INFINITEPAY_HANDLE:fernando-de-9n6}
+  redirect-url: ${INFINITEPAY_REDIRECT_URL:http://localhost:8080/api/v1/payments/return}
