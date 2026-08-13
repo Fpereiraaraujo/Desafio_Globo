@@ -21,3 +21,7 @@ management:
     web:
       exposure:
         include: health,info
+
+subscriptions:
+  renewal:
+    cron: ${SUBSCRIPTIONS_RENEWAL_CRON:0 0 2 * * *}

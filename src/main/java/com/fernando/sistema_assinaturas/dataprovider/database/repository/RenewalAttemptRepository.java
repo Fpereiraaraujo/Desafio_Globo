@@ -12,4 +12,6 @@ public interface RenewalAttemptRepository extends JpaRepository<RenewalAttemptJp
 		UUID subscriptionId,
 		LocalDate renewalDate
 	);
+
+	int countBySubscriptionIdAndRenewalDate(UUID subscriptionId, LocalDate renewalDate);
 }

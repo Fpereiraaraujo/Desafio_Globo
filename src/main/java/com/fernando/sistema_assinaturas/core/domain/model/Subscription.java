@@ -52,4 +52,11 @@ public class Subscription {
 		}
 		return toBuilder().status(SubscriptionStatus.CANCELED).canceledAt(canceledAt).build();
 	}
+
+	public Subscription suspend() {
+		if (status != SubscriptionStatus.ACTIVE) {
+			throw new IllegalStateException("Only active subscriptions can be suspended");
+		}
+		return toBuilder().status(SubscriptionStatus.SUSPENDED).build();
+	}
 }
