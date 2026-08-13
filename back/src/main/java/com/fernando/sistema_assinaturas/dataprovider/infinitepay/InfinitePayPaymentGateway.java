@@ -1,5 +1,6 @@
 package com.fernando.sistema_assinaturas.dataprovider.infinitepay;
 
+import com.fernando.sistema_assinaturas.config.InfinitePayProperties;
 import com.fernando.sistema_assinaturas.core.domain.model.CheckoutResult;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
@@ -12,13 +13,25 @@ import org.springframework.stereotype.Component;
 public class InfinitePayPaymentGateway implements PaymentGateway {
 
 	private final InfinitePayClient client;
+	private final InfinitePayProperties properties;
 
-	public InfinitePayPaymentGateway(InfinitePayClient client) {
+	public InfinitePayPaymentGateway(InfinitePayClient client, InfinitePayProperties properties) {
 		this.client = client;
+		this.properties = properties;
 	}
 
 	@Override
 	public CheckoutResult createCheckout(Subscription subscription, String orderNsu) {
+		String configuredUrl = properties.configuredCheckoutUrl(subscription.getPlan());
+		if (configuredUrl != null) {
+			return new CheckoutResult(
+				PaymentStatus.PENDING,
+				configuredUrl,
+				orderNsu,
+				null,
+				"Configured InfinitePay checkout"
+			);
+		}
 		var response = client.createLinkWithResilience(
 			orderNsu,
 			subscription.getPlan().monthlyPriceCents(),

@@ -146,7 +146,7 @@ Resposta esperada:
 - `plans`: cache local Caffeine, com duração de uma hora.
 - `subscriptionsById` e `subscriptionsByUser`: cache Redis, invalidado ao cancelar ou renovar.
 - CORS libera, por padrão, `http://localhost:3000` e `http://localhost:5173`.
-- A InfinitePay é apenas uma vitrine de integração: o endpoint devolve a URL de checkout. Retry e circuit breaker protegem a chamada HTTP externa. Se a API externa estiver indisponível, a resposta usa uma URL `mock://` que o frontend converte em uma tela demonstrativa de checkout; ela não processa pagamento real.
+- A InfinitePay é apenas uma vitrine de integração: Básico e Premium usam links reais configurados por ambiente; os demais planos tentam criar o link via API. Retry e circuit breaker protegem a chamada HTTP externa. Se a API externa estiver indisponível, a resposta usa uma URL `mock://` que o frontend converte em uma tela demonstrativa de checkout; ela não processa pagamento real.
 
 ## Configurações por ambiente
 
