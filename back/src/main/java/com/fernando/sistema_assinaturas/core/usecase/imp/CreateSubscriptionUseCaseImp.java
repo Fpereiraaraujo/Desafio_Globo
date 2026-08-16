@@ -1,6 +1,7 @@
 package com.fernando.sistema_assinaturas.core.usecase.imp;
 
 import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
+import com.fernando.sistema_assinaturas.core.domain.model.SubscriptionStatus;
 import com.fernando.sistema_assinaturas.core.domain.param.CreateSubscriptionParam;
 import com.fernando.sistema_assinaturas.core.service.SubscriptionCreationService;
 import com.fernando.sistema_assinaturas.core.usecase.CreateSubscriptionUseCase;
@@ -29,7 +30,11 @@ public class CreateSubscriptionUseCaseImp implements CreateSubscriptionUseCase {
 		if (userId == null || !userRepository.existsById(userId)) {
 			throw new ResourceNotFoundException("User not found");
 		}
-		if (subscriptionRepository.existsByUserIdAndStatusActive(userId)) {
+		if (subscriptionRepository.existsByUserIdAndStatusActive(userId)
+			|| subscriptionRepository.existsByUserIdAndStatus(
+				userId,
+				SubscriptionStatus.PENDING_PAYMENT
+			)) {
 			throw new BusinessException("User already has an active subscription");
 		}
 

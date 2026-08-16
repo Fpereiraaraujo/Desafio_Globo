@@ -27,6 +27,7 @@ public class GetUserSubscriptionUseCaseImp implements GetUserSubscriptionUseCase
 		}
 
 		return subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
+			.or(() -> subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.PENDING_PAYMENT))
 			.map(SubscriptionDatabaseMapper::toDomain)
 			.orElseThrow(() -> new ResourceNotFoundException("Active subscription not found"));
 	}

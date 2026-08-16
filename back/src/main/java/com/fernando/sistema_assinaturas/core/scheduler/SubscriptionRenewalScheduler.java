@@ -45,15 +45,29 @@ public class SubscriptionRenewalScheduler {
 		this.clock = clock;
 	}
 
-	@Scheduled(cron = "${subscriptions.renewal.cron:0 0 2 * * *}")
+	@Scheduled(cron = "${subscriptions.renewal.cron:0 0 2 * * *}", zone = "UTC")
 	public void processDueSubscriptions() {
 		LocalDate today = LocalDate.now(clock);
 		int maxAttempts = RenewalPolicy.defaultPolicy().maxAttempts();
-		subscriptionRepository.findAllByStatusAndExpirationDate(SubscriptionStatus.ACTIVE, today)
+		var dueSubscriptions = subscriptionRepository.findAllByStatusAndExpirationDateLessThanEqual(
+			SubscriptionStatus.ACTIVE,
+			today
+		);
+		if (dueSubscriptions.isEmpty()) {
+			dueSubscriptions = subscriptionRepository.findAllByStatusAndExpirationDate(SubscriptionStatus.ACTIVE, today);
+		}
+		dueSubscriptions
 			.forEach(subscription -> {
 				int attempts = renewalAttemptRepository.countBySubscriptionIdAndRenewalDate(
 					subscription.getId(), subscription.getExpirationDate()
 				);
+				var lastAttempt = renewalAttemptRepository.findTopBySubscriptionIdAndRenewalDateOrderByAttemptNumberDesc(
+					subscription.getId(), subscription.getExpirationDate()
+				);
+				if (lastAttempt.isPresent() && lastAttempt.get().getStatus() == RenewalAttemptStatus.PENDING) {
+					log.info("Waiting for payment confirmation for subscription {}", subscription.getId());
+					return;
+				}
 				if (attempts >= maxAttempts) {
 					log.warn("Renewal attempt limit already reached for subscription {}", subscription.getId());
 					return;

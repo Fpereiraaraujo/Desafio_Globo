@@ -28,6 +28,11 @@ public class SubscriptionCreationService {
 		}
 		UUID userId = param.userId();
 		Plan plan = param.plan();
-		return Subscription.create(UUID.randomUUID(), userId, plan, LocalDate.now(clock.withZone(ZoneOffset.UTC)));
+		return Subscription.createPendingPayment(
+			UUID.randomUUID(),
+			userId,
+			plan,
+			LocalDate.now(clock.withZone(ZoneOffset.UTC))
+		);
 	}
 }

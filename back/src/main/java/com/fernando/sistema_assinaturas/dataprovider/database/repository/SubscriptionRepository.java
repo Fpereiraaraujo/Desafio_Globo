@@ -16,6 +16,8 @@ public interface SubscriptionRepository extends JpaRepository<SubscriptionJpaEnt
 	@Query("select count(s) > 0 from SubscriptionJpaEntity s where s.userId = :userId and s.status = 'ACTIVE'")
 	boolean existsByUserIdAndStatusActive(UUID userId);
 
+	boolean existsByUserIdAndStatus(UUID userId, SubscriptionStatus status);
+
 	Optional<SubscriptionJpaEntity> findByUserIdAndStatus(UUID userId, SubscriptionStatus status);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)

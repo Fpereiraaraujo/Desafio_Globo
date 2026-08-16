@@ -19,6 +19,20 @@ public class Subscription {
 	Instant canceledAt;
 
 	public static Subscription create(UUID id, UUID userId, Plan plan, LocalDate startDate) {
+		return create(id, userId, plan, startDate, SubscriptionStatus.ACTIVE);
+	}
+
+	public static Subscription createPendingPayment(UUID id, UUID userId, Plan plan, LocalDate startDate) {
+		return create(id, userId, plan, startDate, SubscriptionStatus.PENDING_PAYMENT);
+	}
+
+	private static Subscription create(
+		UUID id,
+		UUID userId,
+		Plan plan,
+		LocalDate startDate,
+		SubscriptionStatus status
+	) {
 		if (id == null || userId == null) {
 			throw new IllegalArgumentException("Subscription and user ids are required");
 		}
@@ -35,8 +49,18 @@ public class Subscription {
 			.plan(plan)
 			.startDate(startDate)
 			.expirationDate(startDate.plusMonths(1))
-			.status(SubscriptionStatus.ACTIVE)
+			.status(status)
 			.build();
+	}
+
+	public Subscription activate() {
+		if (status == SubscriptionStatus.ACTIVE) {
+			return this;
+		}
+		if (status != SubscriptionStatus.PENDING_PAYMENT) {
+			throw new IllegalStateException("Only subscriptions awaiting payment can be activated");
+		}
+		return toBuilder().status(SubscriptionStatus.ACTIVE).build();
 	}
 
 	public Subscription cancel() {

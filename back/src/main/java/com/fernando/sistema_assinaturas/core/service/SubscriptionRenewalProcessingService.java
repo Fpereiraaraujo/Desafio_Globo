@@ -2,6 +2,7 @@ package com.fernando.sistema_assinaturas.core.service;
 
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentTransaction;
+import com.fernando.sistema_assinaturas.core.domain.model.PaymentType;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalAttempt;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalAttemptStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalProcessingResult;
@@ -21,16 +22,30 @@ public class SubscriptionRenewalProcessingService {
 	private final RenewalPaymentGateway paymentGateway;
 	private final Clock clock;
 	private final RenewalPolicy renewalPolicy;
+	private final SubscriptionRenewalService subscriptionRenewalService;
 
 	@Autowired
-	public SubscriptionRenewalProcessingService(RenewalPaymentGateway paymentGateway) {
-		this(paymentGateway, Clock.systemUTC(), RenewalPolicy.defaultPolicy());
+	public SubscriptionRenewalProcessingService(
+		RenewalPaymentGateway paymentGateway,
+		SubscriptionRenewalService subscriptionRenewalService
+	) {
+		this(paymentGateway, Clock.systemUTC(), RenewalPolicy.defaultPolicy(), subscriptionRenewalService);
 	}
 
 	public SubscriptionRenewalProcessingService(RenewalPaymentGateway paymentGateway, Clock clock, RenewalPolicy renewalPolicy) {
+		this(paymentGateway, clock, renewalPolicy, new SubscriptionRenewalService());
+	}
+
+	public SubscriptionRenewalProcessingService(
+		RenewalPaymentGateway paymentGateway,
+		Clock clock,
+		RenewalPolicy renewalPolicy,
+		SubscriptionRenewalService subscriptionRenewalService
+	) {
 		this.paymentGateway = paymentGateway;
 		this.clock = clock;
 		this.renewalPolicy = renewalPolicy;
+		this.subscriptionRenewalService = subscriptionRenewalService;
 	}
 
 	public RenewalProcessingResult process(Subscription subscription, int attemptNumber) {
@@ -50,19 +65,26 @@ public class SubscriptionRenewalProcessingService {
 		} catch (RuntimeException exception) {
 			paymentStatus = PaymentStatus.FAILED;
 		}
+		if (paymentStatus == null) {
+			paymentStatus = PaymentStatus.FAILED;
+		}
 		boolean approved = paymentStatus == PaymentStatus.APPROVED;
 		boolean pending = paymentStatus == PaymentStatus.PENDING;
 
-		PaymentTransaction transaction = PaymentTransaction.builder()
-			.id(UUID.randomUUID())
-			.subscriptionId(subscription.getId())
-			.idempotencyKey(idempotencyKey)
-			.amountCents(subscription.getPlan().monthlyPriceCents())
-			.status(paymentStatus)
-			.providerTransactionId(null)
-			.createdAt(now)
-			.completedAt(approved ? now : null)
-			.build();
+		PaymentTransaction transaction = PaymentTransaction.pending(
+			UUID.randomUUID(),
+			subscription.getId(),
+			PaymentType.RENEWAL,
+			attemptNumber,
+			idempotencyKey,
+			subscription.getPlan().monthlyPriceCents(),
+			now
+		).applyProviderStatus(
+			paymentStatus,
+			null,
+			approved || pending ? null : "Renewal payment failed",
+			paymentStatus.isFinal() ? now : null
+		);
 
 		RenewalAttempt attempt = RenewalAttempt.builder()
 			.id(UUID.randomUUID())
@@ -76,7 +98,7 @@ public class SubscriptionRenewalProcessingService {
 			.build();
 
 		Subscription renewed = approved
-			? new SubscriptionRenewalService().renew(subscription, renewalDate).subscription()
+			? subscriptionRenewalService.renew(subscription, renewalDate).subscription()
 			: subscription;
 
 		return new RenewalProcessingResult(attempt, transaction, renewed);

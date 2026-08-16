@@ -21,4 +21,11 @@ public interface RenewalAttemptRepository extends JpaRepository<RenewalAttemptJp
 		LocalDate renewalDate,
 		int attemptNumber
 	);
+
+	Optional<RenewalAttemptJpaEntity> findByIdempotencyKey(String idempotencyKey);
+
+	Optional<RenewalAttemptJpaEntity> findTopBySubscriptionIdAndRenewalDateOrderByAttemptNumberDesc(
+		UUID subscriptionId,
+		LocalDate renewalDate
+	);
 }

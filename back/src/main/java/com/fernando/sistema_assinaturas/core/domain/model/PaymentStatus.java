@@ -5,5 +5,10 @@ public enum PaymentStatus {
 	APPROVED,
 	DECLINED,
 	FAILED,
-	UNKNOWN
+	UNKNOWN,
+	EXPIRED;
+
+	public boolean isFinal() {
+		return this == APPROVED || this == DECLINED || this == FAILED || this == EXPIRED;
+	}
 }
