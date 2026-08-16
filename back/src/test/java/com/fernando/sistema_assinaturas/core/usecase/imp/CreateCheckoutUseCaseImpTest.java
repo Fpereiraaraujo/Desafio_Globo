@@ -13,6 +13,7 @@ import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
 import com.fernando.sistema_assinaturas.core.domain.param.CreateCheckoutParam;
 import com.fernando.sistema_assinaturas.core.gateway.PaymentGateway;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.SubscriptionDatabaseMapper;
+import com.fernando.sistema_assinaturas.dataprovider.database.repository.PaymentTransactionRepository;
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.SubscriptionRepository;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CreateCheckoutUseCaseImpTest {
 
 	@Mock private SubscriptionRepository subscriptionRepository;
+	@Mock private PaymentTransactionRepository paymentTransactionRepository;
 	@Mock private PaymentGateway paymentGateway;
 	@InjectMocks private CreateCheckoutUseCaseImp useCase;
 
