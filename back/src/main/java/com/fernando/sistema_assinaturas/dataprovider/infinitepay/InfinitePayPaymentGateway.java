@@ -22,6 +22,15 @@ public class InfinitePayPaymentGateway implements PaymentGateway {
 
 	@Override
 	public CheckoutResult createCheckout(Subscription subscription, String orderNsu) {
+		if (properties.demoMode()) {
+			return new CheckoutResult(
+				PaymentStatus.PENDING,
+				"mock://infinitepay/checkout",
+				orderNsu,
+				null,
+				"Demonstration checkout created"
+			);
+		}
 		String configuredUrl = properties.configuredCheckoutUrl(subscription.getPlan());
 		if (configuredUrl != null) {
 			return new CheckoutResult(

@@ -4,6 +4,7 @@ import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentTransaction;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentType;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalAttemptStatus;
+import com.fernando.sistema_assinaturas.core.domain.model.RenewalPolicy;
 import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
 import com.fernando.sistema_assinaturas.core.domain.model.SubscriptionStatus;
 import com.fernando.sistema_assinaturas.core.domain.param.UpdatePaymentStatusParam;
@@ -49,7 +50,13 @@ public class UpdatePaymentStatusUseCaseImp implements UpdatePaymentStatusUseCase
 			throw new IllegalArgumentException("Payment status is required");
 		}
 
-		PaymentTransaction current = paymentTransactionRepository.findById(param.paymentId())
+		PaymentTransaction reference = paymentTransactionRepository.findById(param.paymentId())
+			.map(PaymentTransactionDatabaseMapper::toDomain)
+			.orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+		subscriptionRepository.findByIdForUpdate(reference.getSubscriptionId())
+			.orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
+
+		PaymentTransaction current = paymentTransactionRepository.findByIdForUpdate(param.paymentId())
 			.map(PaymentTransactionDatabaseMapper::toDomain)
 			.orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 		if (current.getStatus() == param.status()) {
@@ -88,6 +95,8 @@ public class UpdatePaymentStatusUseCaseImp implements UpdatePaymentStatusUseCase
 		Subscription subscription = SubscriptionDatabaseMapper.toDomain(subscriptionEntity);
 		if (subscription.getStatus() == SubscriptionStatus.PENDING_PAYMENT) {
 			subscriptionRepository.save(SubscriptionDatabaseMapper.toEntity(subscription.activate()));
+		} else if (subscription.getStatus() == SubscriptionStatus.EXPIRED) {
+			throw new IllegalStateException("Subscription payment has expired");
 		}
 	}
 
@@ -128,7 +137,7 @@ public class UpdatePaymentStatusUseCaseImp implements UpdatePaymentStatusUseCase
 				.failureReason(payment.getFailureReason() != null ? payment.getFailureReason() : payment.getStatus().name())
 				.build();
 			renewalAttemptRepository.save(RenewalAttemptDatabaseMapper.toEntity(attempt));
-			if (attempt.isFinalFailure(3)
+			if (attempt.isFinalFailure(RenewalPolicy.defaultPolicy().maxAttempts())
 				&& subscription.getStatus() == SubscriptionStatus.ACTIVE) {
 				subscriptionRepository.save(SubscriptionDatabaseMapper.toEntity(subscription.suspend()));
 			}

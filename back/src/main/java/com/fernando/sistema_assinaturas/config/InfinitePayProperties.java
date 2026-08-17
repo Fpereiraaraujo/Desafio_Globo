@@ -9,6 +9,7 @@ public record InfinitePayProperties(
 	String apiBaseUrl,
 	String handle,
 	String redirectUrl,
+	boolean demoMode,
 	Map<String, String> checkoutUrls
 ) {
 	public String normalizedBaseUrl() {

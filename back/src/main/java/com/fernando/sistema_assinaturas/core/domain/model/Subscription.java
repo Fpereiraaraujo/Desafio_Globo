@@ -15,15 +15,32 @@ public class Subscription {
 	Plan plan;
 	LocalDate startDate;
 	LocalDate expirationDate;
+	Instant pendingPaymentExpiresAt;
 	SubscriptionStatus status;
 	Instant canceledAt;
 
 	public static Subscription create(UUID id, UUID userId, Plan plan, LocalDate startDate) {
-		return create(id, userId, plan, startDate, SubscriptionStatus.ACTIVE);
+		return create(id, userId, plan, startDate, SubscriptionStatus.ACTIVE, null);
 	}
 
 	public static Subscription createPendingPayment(UUID id, UUID userId, Plan plan, LocalDate startDate) {
-		return create(id, userId, plan, startDate, SubscriptionStatus.PENDING_PAYMENT);
+		return createPendingPayment(
+			id,
+			userId,
+			plan,
+			startDate,
+			startDate.atStartOfDay(java.time.ZoneOffset.UTC).plusHours(24).toInstant()
+		);
+	}
+
+	public static Subscription createPendingPayment(
+		UUID id,
+		UUID userId,
+		Plan plan,
+		LocalDate startDate,
+		Instant pendingPaymentExpiresAt
+	) {
+		return create(id, userId, plan, startDate, SubscriptionStatus.PENDING_PAYMENT, pendingPaymentExpiresAt);
 	}
 
 	private static Subscription create(
@@ -31,7 +48,8 @@ public class Subscription {
 		UUID userId,
 		Plan plan,
 		LocalDate startDate,
-		SubscriptionStatus status
+		SubscriptionStatus status,
+		Instant pendingPaymentExpiresAt
 	) {
 		if (id == null || userId == null) {
 			throw new IllegalArgumentException("Subscription and user ids are required");
@@ -42,6 +60,9 @@ public class Subscription {
 		if (startDate == null) {
 			throw new IllegalArgumentException("Subscription start date is required");
 		}
+		if (status == SubscriptionStatus.PENDING_PAYMENT && pendingPaymentExpiresAt == null) {
+			throw new IllegalArgumentException("Pending payment expiration is required");
+		}
 
 		return Subscription.builder()
 			.id(id)
@@ -49,6 +70,7 @@ public class Subscription {
 			.plan(plan)
 			.startDate(startDate)
 			.expirationDate(startDate.plusMonths(1))
+			.pendingPaymentExpiresAt(pendingPaymentExpiresAt)
 			.status(status)
 			.build();
 	}
@@ -60,7 +82,14 @@ public class Subscription {
 		if (status != SubscriptionStatus.PENDING_PAYMENT) {
 			throw new IllegalStateException("Only subscriptions awaiting payment can be activated");
 		}
-		return toBuilder().status(SubscriptionStatus.ACTIVE).build();
+		return toBuilder().status(SubscriptionStatus.ACTIVE).pendingPaymentExpiresAt(null).build();
+	}
+
+	public Subscription expirePendingPayment() {
+		if (status != SubscriptionStatus.PENDING_PAYMENT) {
+			throw new IllegalStateException("Only subscriptions awaiting payment can expire");
+		}
+		return toBuilder().status(SubscriptionStatus.EXPIRED).build();
 	}
 
 	public Subscription cancel() {

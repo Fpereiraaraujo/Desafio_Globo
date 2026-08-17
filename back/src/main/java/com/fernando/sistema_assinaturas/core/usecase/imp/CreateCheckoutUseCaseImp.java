@@ -67,7 +67,7 @@ public class CreateCheckoutUseCaseImp implements CreateCheckoutUseCase {
 		}
 
 		int attemptNumber = previousPayment.map(entityValue -> entityValue.getAttemptNumber() + 1).orElse(1);
-		String orderNsu = subscription.getStatus() == SubscriptionStatus.ACTIVE
+		String orderNsu = subscription.getStatus() == SubscriptionStatus.ACTIVE && previousPayment.isEmpty()
 			? subscriptionId.toString()
 			: subscriptionId + ":initial:" + attemptNumber;
 		Instant now = Instant.now(clock);

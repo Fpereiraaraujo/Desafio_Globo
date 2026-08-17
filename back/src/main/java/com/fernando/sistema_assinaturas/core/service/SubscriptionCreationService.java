@@ -4,6 +4,8 @@ import com.fernando.sistema_assinaturas.core.domain.model.Plan;
 import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
 import com.fernando.sistema_assinaturas.core.domain.param.CreateSubscriptionParam;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -11,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SubscriptionCreationService {
+
+	private static final Duration PENDING_PAYMENT_TIMEOUT = Duration.ofHours(24);
 
 	private final Clock clock;
 
@@ -32,7 +36,8 @@ public class SubscriptionCreationService {
 			UUID.randomUUID(),
 			userId,
 			plan,
-			LocalDate.now(clock.withZone(ZoneOffset.UTC))
+			LocalDate.now(clock.withZone(ZoneOffset.UTC)),
+			Instant.now(clock).plus(PENDING_PAYMENT_TIMEOUT)
 		);
 	}
 }

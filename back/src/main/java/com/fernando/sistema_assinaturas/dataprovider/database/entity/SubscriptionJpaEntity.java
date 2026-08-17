@@ -42,6 +42,9 @@ public class SubscriptionJpaEntity {
 	@Column(name = "expiration_date", nullable = false)
 	private LocalDate expirationDate;
 
+	@Column(name = "pending_payment_expires_at")
+	private Instant pendingPaymentExpiresAt;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private SubscriptionStatus status;

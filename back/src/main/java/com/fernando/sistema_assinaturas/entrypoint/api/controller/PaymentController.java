@@ -1,6 +1,7 @@
 package com.fernando.sistema_assinaturas.entrypoint.api.controller;
 
 import com.fernando.sistema_assinaturas.core.domain.param.UpdatePaymentStatusParam;
+import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
 import com.fernando.sistema_assinaturas.core.usecase.GetPaymentUseCase;
 import com.fernando.sistema_assinaturas.core.usecase.UpdatePaymentStatusUseCase;
 import com.fernando.sistema_assinaturas.entrypoint.api.dto.PaymentResponse;
@@ -17,23 +18,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/payments")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class PaymentController {
 
 	private final GetPaymentUseCase getPaymentUseCase;
 	private final UpdatePaymentStatusUseCase updatePaymentStatusUseCase;
 
-	@GetMapping("/{paymentId}")
+	@GetMapping("/payments/{paymentId}")
 	public ResponseEntity<PaymentResponse> get(@PathVariable UUID paymentId) {
 		return ResponseEntity.ok(PaymentResponse.from(getPaymentUseCase.execute(paymentId)));
 	}
 
-	@PostMapping("/{paymentId}/status")
+	@PostMapping("/demo/payments/{paymentId}/status")
 	public ResponseEntity<PaymentResponse> updateStatus(
 		@PathVariable UUID paymentId,
 		@Valid @RequestBody UpdatePaymentStatusRequest request
 	) {
+		if (request.status() != PaymentStatus.APPROVED && request.status() != PaymentStatus.DECLINED) {
+			throw new IllegalArgumentException("Demo payment status must be APPROVED or DECLINED");
+		}
 		var payment = updatePaymentStatusUseCase.execute(new UpdatePaymentStatusParam(
 			paymentId,
 			request.status(),

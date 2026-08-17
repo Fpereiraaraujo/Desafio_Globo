@@ -8,6 +8,7 @@ import com.fernando.sistema_assinaturas.dataprovider.database.repository.Subscri
 import com.fernando.sistema_assinaturas.entrypoint.api.exception.ResourceNotFoundException;
 import java.util.UUID;
 import java.time.Instant;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +33,9 @@ public class CancelSubscriptionUseCaseImp implements CancelSubscriptionUseCase {
 			throw new IllegalArgumentException("Subscription id is required");
 		}
 
-		var entity = subscriptionRepository.findById(subscriptionId)
+		var entity = Optional.ofNullable(subscriptionRepository.findByIdForUpdate(subscriptionId))
+			.orElse(Optional.empty())
+			.or(() -> subscriptionRepository.findById(subscriptionId))
 			.orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
 		Subscription canceled = SubscriptionDatabaseMapper.toDomain(entity).cancel(Instant.now());
 		return SubscriptionDatabaseMapper.toDomain(

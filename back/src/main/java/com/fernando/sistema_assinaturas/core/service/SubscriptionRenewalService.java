@@ -24,6 +24,7 @@ public class SubscriptionRenewalService {
 		Subscription renewed = subscription.toBuilder()
 			.startDate(subscription.getExpirationDate())
 			.expirationDate(renewedUntil)
+			.pendingPaymentExpiresAt(null)
 			.build();
 		return new RenewalResult(renewed, renewedUntil);
 	}

@@ -15,6 +15,7 @@ public final class SubscriptionDatabaseMapper {
 			.plan(subscription.getPlan())
 			.startDate(subscription.getStartDate())
 			.expirationDate(subscription.getExpirationDate())
+			.pendingPaymentExpiresAt(subscription.getPendingPaymentExpiresAt())
 			.status(subscription.getStatus())
 			.canceledAt(subscription.getCanceledAt())
 			.build();
@@ -27,6 +28,7 @@ public final class SubscriptionDatabaseMapper {
 			.plan(entity.getPlan())
 			.startDate(entity.getStartDate())
 			.expirationDate(entity.getExpirationDate())
+			.pendingPaymentExpiresAt(entity.getPendingPaymentExpiresAt())
 			.status(entity.getStatus())
 			.canceledAt(entity.getCanceledAt())
 			.build();

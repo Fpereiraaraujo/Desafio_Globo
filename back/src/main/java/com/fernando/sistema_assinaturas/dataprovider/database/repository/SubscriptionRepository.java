@@ -5,6 +5,7 @@ import com.fernando.sistema_assinaturas.dataprovider.database.entity.Subscriptio
 import java.util.UUID;
 import java.util.Optional;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -32,5 +33,10 @@ public interface SubscriptionRepository extends JpaRepository<SubscriptionJpaEnt
 	List<SubscriptionJpaEntity> findAllByStatusAndExpirationDate(
 		SubscriptionStatus status,
 		LocalDate expirationDate
+	);
+
+	List<SubscriptionJpaEntity> findAllByStatusAndPendingPaymentExpiresAtLessThanEqual(
+		SubscriptionStatus status,
+		Instant pendingPaymentExpiresAt
 	);
 }

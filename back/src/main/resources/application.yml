@@ -39,7 +39,8 @@ resilience4j:
         max-attempts: 3
         wait-duration: 500ms
         retry-exceptions:
-          - org.springframework.web.client.RestClientException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
   circuitbreaker:
     instances:
       infinitePay:
@@ -53,11 +54,14 @@ resilience4j:
 subscriptions:
   renewal:
     cron: ${SUBSCRIPTIONS_RENEWAL_CRON:0 0 2 * * *}
+  pending-payment-expiration:
+    cron: ${SUBSCRIPTIONS_PENDING_PAYMENT_EXPIRATION_CRON:0 */5 * * * *}
 
 infinitepay:
   api-base-url: ${INFINITEPAY_API_BASE_URL:https://api.checkout.infinitepay.io}
   handle: ${INFINITEPAY_HANDLE:fernando-de-9n6}
   redirect-url: ${INFINITEPAY_REDIRECT_URL:http://localhost:8080/api/v1/payments/return}
+  demo-mode: ${INFINITEPAY_DEMO_MODE:true}
   checkout-urls:
     BASICO: ${INFINITEPAY_BASICO_CHECKOUT_URL:https://checkout.infinitepay.io/fernando-de-9n6/d85NtgPKqU}
     PREMIUM: ${INFINITEPAY_PREMIUM_CHECKOUT_URL:https://checkout.infinitepay.io/fernando-de-9n6/VAw6xiss01}
