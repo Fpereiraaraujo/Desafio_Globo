@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORAGE_KEY = 'assinaturas.subscription-id'
+const USER_STORAGE_KEY = 'assinaturas.user-id'
 
 const PLAN_DETAILS = {
   BASICO: { name: 'Básico', price: '19,90', description: 'Para começar com o essencial.', accent: 'bg-lime-300' },
@@ -59,7 +60,10 @@ function App() {
       }
 
       request(`/subscriptions/${subscriptionId}`)
-        .then(setSubscription)
+        .then((loadedSubscription) => {
+          localStorage.setItem(USER_STORAGE_KEY, loadedSubscription.userId)
+          setSubscription(loadedSubscription)
+        })
         .catch(() => {
           localStorage.removeItem(STORAGE_KEY)
           setSubscription(null)
@@ -101,13 +105,18 @@ function App() {
     setNotice(null)
 
     try {
-      const user = await request('/users', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      })
+      let userId = localStorage.getItem(USER_STORAGE_KEY) ?? subscription?.userId
+      if (!userId) {
+        const user = await request('/users', {
+          method: 'POST',
+          body: JSON.stringify(form),
+        })
+        userId = user.id
+        localStorage.setItem(USER_STORAGE_KEY, userId)
+      }
       const createdSubscription = await request('/subscriptions', {
         method: 'POST',
-        body: JSON.stringify({ userId: user.id, plan: selectedPlan }),
+        body: JSON.stringify({ userId, plan: selectedPlan }),
       })
       localStorage.setItem(STORAGE_KEY, createdSubscription.id)
       setSubscription(createdSubscription)
@@ -284,9 +293,16 @@ function CheckoutDemo() {
 	const amount = Number(params.get('amount') ?? 3990) / 100
 	const order = params.get('order') ?? 'pedido-demo'
 	const paymentId = params.get('paymentId')
+	const [infinitePayUrl, setInfinitePayUrl] = useState(null)
 	const [status, setStatus] = useState('PENDING')
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState(null)
+
+	useEffect(() => {
+		request(`/subscriptions/checkout-url?plan=${encodeURIComponent(plan)}`)
+			.then((checkout) => setInfinitePayUrl(checkout.checkoutUrl))
+			.catch(() => setInfinitePayUrl(null))
+	}, [plan])
 
 	async function updatePayment(nextStatus) {
 		if (!paymentId) {
@@ -335,6 +351,7 @@ function CheckoutDemo() {
 						<button disabled={busy || status !== 'PENDING'} onClick={() => updatePayment('APPROVED')} className="rounded-xl bg-emerald-700 px-4 py-3 text-left text-sm font-bold text-white disabled:opacity-50">Aprovar pagamento</button>
 						<button disabled={busy || status !== 'PENDING'} onClick={() => updatePayment('DECLINED')} className="rounded-xl border border-red-200 px-4 py-3 text-left text-sm font-bold text-red-700 disabled:opacity-50">Recusar pagamento</button>
 					</div>
+					{infinitePayUrl && <a href={infinitePayUrl} target="_blank" rel="noreferrer" className="mt-5 block rounded-xl bg-[#5b2c83] px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-[#4b236d]">Abrir checkout na InfinitePay</a>}
 					{error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
 					{status !== 'PENDING' && <p className="mt-4 rounded-xl bg-stone-100 px-4 py-3 text-sm font-medium text-stone-700">Resultado registrado: {status === 'APPROVED' ? 'aprovado' : 'recusado'}.</p>}
 				</div>

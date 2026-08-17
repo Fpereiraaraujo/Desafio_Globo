@@ -9,6 +9,7 @@ import com.fernando.sistema_assinaturas.core.domain.model.RenewalProcessingResul
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalPolicy;
 import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
 import com.fernando.sistema_assinaturas.core.gateway.RenewalPaymentGateway;
+import com.fernando.sistema_assinaturas.config.RenewalRetryProperties;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,29 +24,33 @@ public class SubscriptionRenewalProcessingService {
 	private final Clock clock;
 	private final RenewalPolicy renewalPolicy;
 	private final SubscriptionRenewalService subscriptionRenewalService;
+	private final RenewalRetryProperties retryProperties;
 
 	@Autowired
 	public SubscriptionRenewalProcessingService(
 		RenewalPaymentGateway paymentGateway,
-		SubscriptionRenewalService subscriptionRenewalService
+		SubscriptionRenewalService subscriptionRenewalService,
+		RenewalRetryProperties retryProperties
 	) {
-		this(paymentGateway, Clock.systemUTC(), RenewalPolicy.defaultPolicy(), subscriptionRenewalService);
+		this(paymentGateway, Clock.systemUTC(), RenewalPolicy.defaultPolicy(), subscriptionRenewalService, retryProperties);
 	}
 
 	public SubscriptionRenewalProcessingService(RenewalPaymentGateway paymentGateway, Clock clock, RenewalPolicy renewalPolicy) {
-		this(paymentGateway, clock, renewalPolicy, new SubscriptionRenewalService());
+		this(paymentGateway, clock, renewalPolicy, new SubscriptionRenewalService(), new RenewalRetryProperties(null, null, null));
 	}
 
 	public SubscriptionRenewalProcessingService(
 		RenewalPaymentGateway paymentGateway,
 		Clock clock,
 		RenewalPolicy renewalPolicy,
-		SubscriptionRenewalService subscriptionRenewalService
+		SubscriptionRenewalService subscriptionRenewalService,
+		RenewalRetryProperties retryProperties
 	) {
 		this.paymentGateway = paymentGateway;
 		this.clock = clock;
 		this.renewalPolicy = renewalPolicy;
 		this.subscriptionRenewalService = subscriptionRenewalService;
+		this.retryProperties = retryProperties;
 	}
 
 	public RenewalProcessingResult process(Subscription subscription, int attemptNumber) {
@@ -70,6 +75,7 @@ public class SubscriptionRenewalProcessingService {
 		}
 		boolean approved = paymentStatus == PaymentStatus.APPROVED;
 		boolean pending = paymentStatus == PaymentStatus.PENDING;
+		boolean retryScheduled = !approved && !pending && attemptNumber < renewalPolicy.maxAttempts();
 
 		PaymentTransaction transaction = PaymentTransaction.pending(
 			UUID.randomUUID(),
@@ -91,10 +97,12 @@ public class SubscriptionRenewalProcessingService {
 			.subscriptionId(subscription.getId())
 			.renewalDate(renewalDate)
 			.attemptNumber(attemptNumber)
-			.status(approved ? RenewalAttemptStatus.SUCCEEDED : pending ? RenewalAttemptStatus.PENDING : RenewalAttemptStatus.FAILED)
+			.status(approved ? RenewalAttemptStatus.SUCCEEDED : pending ? RenewalAttemptStatus.PENDING
+				: retryScheduled ? RenewalAttemptStatus.WAITING_RETRY : RenewalAttemptStatus.FAILED)
 			.idempotencyKey(idempotencyKey)
 			.failureReason(approved || pending ? null : "Renewal payment failed")
 			.attemptedAt(now)
+			.nextRetryAt(retryScheduled ? now.plus(retryProperties.delayForFailure(attemptNumber)) : null)
 			.build();
 
 		Subscription renewed = approved

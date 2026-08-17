@@ -53,7 +53,11 @@ resilience4j:
 
 subscriptions:
   renewal:
-    cron: ${SUBSCRIPTIONS_RENEWAL_CRON:0 0 2 * * *}
+    cron: ${SUBSCRIPTIONS_RENEWAL_CRON:0 */5 * * * *}
+    retry:
+      first-delay: ${SUBSCRIPTIONS_RENEWAL_FIRST_RETRY_DELAY:PT30M}
+      second-delay: ${SUBSCRIPTIONS_RENEWAL_SECOND_RETRY_DELAY:PT24H}
+      pending-timeout: ${SUBSCRIPTIONS_RENEWAL_PENDING_TIMEOUT:PT30M}
   pending-payment-expiration:
     cron: ${SUBSCRIPTIONS_PENDING_PAYMENT_EXPIRATION_CRON:0 */5 * * * *}
 

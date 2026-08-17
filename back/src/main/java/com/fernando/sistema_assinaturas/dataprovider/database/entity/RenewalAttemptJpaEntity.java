@@ -49,4 +49,7 @@ public class RenewalAttemptJpaEntity {
 
 	@Column(name = "attempted_at", nullable = false)
 	private Instant attemptedAt;
+
+	@Column(name = "next_retry_at")
+	private Instant nextRetryAt;
 }

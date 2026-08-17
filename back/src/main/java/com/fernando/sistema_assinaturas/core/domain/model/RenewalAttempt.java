@@ -18,6 +18,7 @@ public class RenewalAttempt {
 	String idempotencyKey;
 	String failureReason;
 	Instant attemptedAt;
+	Instant nextRetryAt;
 
 	public boolean isFinalFailure(int maxAttempts) {
 		return status == RenewalAttemptStatus.FAILED && attemptNumber >= maxAttempts;

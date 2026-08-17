@@ -7,6 +7,7 @@ import com.fernando.sistema_assinaturas.core.domain.model.SubscriptionStatus;
 import com.fernando.sistema_assinaturas.core.domain.param.ProcessRenewalParam;
 import com.fernando.sistema_assinaturas.core.usecase.ProcessRenewalUseCase;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.PaymentTransactionDatabaseMapper;
+import com.fernando.sistema_assinaturas.dataprovider.database.mapper.RenewalAttemptDatabaseMapper;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.SubscriptionDatabaseMapper;
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.PaymentTransactionRepository;
 import com.fernando.sistema_assinaturas.dataprovider.database.repository.RenewalAttemptRepository;
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 import java.time.Clock;
 import java.time.Instant;
 import com.fernando.sistema_assinaturas.core.domain.model.RenewalPolicy;
+import com.fernando.sistema_assinaturas.config.RenewalRetryProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import lombok.extern.slf4j.Slf4j;
@@ -32,15 +34,17 @@ public class SubscriptionRenewalScheduler {
 	private final PaymentTransactionRepository paymentTransactionRepository;
 	private final ProcessRenewalUseCase processRenewalUseCase;
 	private final Clock clock;
+	private final RenewalRetryProperties retryProperties;
 
 	@Autowired
 	public SubscriptionRenewalScheduler(
 		SubscriptionRepository subscriptionRepository,
 		RenewalAttemptRepository renewalAttemptRepository,
 		PaymentTransactionRepository paymentTransactionRepository,
-		ProcessRenewalUseCase processRenewalUseCase
+		ProcessRenewalUseCase processRenewalUseCase,
+		RenewalRetryProperties retryProperties
 	) {
-		this(subscriptionRepository, renewalAttemptRepository, paymentTransactionRepository, processRenewalUseCase, Clock.systemUTC());
+		this(subscriptionRepository, renewalAttemptRepository, paymentTransactionRepository, processRenewalUseCase, Clock.systemUTC(), retryProperties);
 	}
 
 	public SubscriptionRenewalScheduler(
@@ -49,7 +53,7 @@ public class SubscriptionRenewalScheduler {
 		ProcessRenewalUseCase processRenewalUseCase,
 		Clock clock
 	) {
-		this(subscriptionRepository, renewalAttemptRepository, null, processRenewalUseCase, clock);
+		this(subscriptionRepository, renewalAttemptRepository, null, processRenewalUseCase, clock, new RenewalRetryProperties(null, null, null));
 	}
 
 	public SubscriptionRenewalScheduler(
@@ -57,18 +61,22 @@ public class SubscriptionRenewalScheduler {
 		RenewalAttemptRepository renewalAttemptRepository,
 		PaymentTransactionRepository paymentTransactionRepository,
 		ProcessRenewalUseCase processRenewalUseCase,
-		Clock clock
+		Clock clock,
+		RenewalRetryProperties retryProperties
 	) {
 		this.subscriptionRepository = subscriptionRepository;
 		this.renewalAttemptRepository = renewalAttemptRepository;
 		this.paymentTransactionRepository = paymentTransactionRepository;
 		this.processRenewalUseCase = processRenewalUseCase;
 		this.clock = clock;
+		this.retryProperties = retryProperties;
 	}
 
-	@Scheduled(cron = "${subscriptions.renewal.cron:0 0 2 * * *}", zone = "UTC")
+	@Scheduled(cron = "${subscriptions.renewal.cron:0 */5 * * * *}", zone = "UTC")
+	@Transactional
 	public void processDueSubscriptions() {
 		LocalDate today = LocalDate.now(clock);
+		Instant now = Instant.now(clock);
 		int maxAttempts = RenewalPolicy.defaultPolicy().maxAttempts();
 		var dueSubscriptions = subscriptionRepository.findAllByStatusAndExpirationDateLessThanEqual(
 			SubscriptionStatus.ACTIVE,
@@ -86,27 +94,59 @@ public class SubscriptionRenewalScheduler {
 					subscription.getId(), subscription.getExpirationDate()
 				);
 				if (lastAttempt.isPresent() && lastAttempt.get().getStatus() == RenewalAttemptStatus.PENDING) {
+					expireTimedOutPendingAttempt(subscription, lastAttempt.get(), now, maxAttempts);
 					log.info("Waiting for payment confirmation for subscription {}", subscription.getId());
+					return;
+				}
+				if (lastAttempt.isPresent() && lastAttempt.get().getStatus() == RenewalAttemptStatus.WAITING_RETRY
+					&& lastAttempt.get().getNextRetryAt() != null
+					&& lastAttempt.get().getNextRetryAt().isAfter(now)) {
 					return;
 				}
 				if (attempts >= maxAttempts) {
 					log.warn("Renewal attempt limit already reached for subscription {}", subscription.getId());
 					return;
 				}
-				for (int attemptNumber = attempts + 1; attemptNumber <= maxAttempts; attemptNumber++) {
-					try {
-						var result = processRenewalUseCase.execute(new ProcessRenewalParam(
-							subscription.getId(), subscription.getExpirationDate(), attemptNumber
-						));
-						if (result == null || result.attempt().getStatus() != RenewalAttemptStatus.FAILED) {
-							return;
-						}
-					} catch (RuntimeException exception) {
-						log.error("Could not process renewal for subscription {}", subscription.getId(), exception);
-						return;
-					}
+				try {
+					processRenewalUseCase.execute(new ProcessRenewalParam(
+						subscription.getId(), subscription.getExpirationDate(), attempts + 1
+					));
+				} catch (RuntimeException exception) {
+					log.error("Could not process renewal for subscription {}", subscription.getId(), exception);
 				}
 		});
+	}
+
+	private void expireTimedOutPendingAttempt(
+		com.fernando.sistema_assinaturas.dataprovider.database.entity.SubscriptionJpaEntity subscription,
+		com.fernando.sistema_assinaturas.dataprovider.database.entity.RenewalAttemptJpaEntity attemptEntity,
+		Instant now,
+		int maxAttempts
+	) {
+		if (attemptEntity.getAttemptedAt().plus(retryProperties.pendingTimeout()).isAfter(now)
+			|| paymentTransactionRepository == null) {
+			return;
+		}
+
+		paymentTransactionRepository.findByIdempotencyKey(attemptEntity.getIdempotencyKey()).ifPresent(payment ->
+			paymentTransactionRepository.save(PaymentTransactionDatabaseMapper.toEntity(
+				PaymentTransactionDatabaseMapper.toDomain(payment).applyProviderStatus(
+					PaymentStatus.EXPIRED, null, "Renewal payment confirmation timed out", now
+				)
+			))
+		);
+
+		var attempt = RenewalAttemptDatabaseMapper.toDomain(attemptEntity);
+		boolean finalFailure = attempt.getAttemptNumber() >= maxAttempts;
+		renewalAttemptRepository.save(RenewalAttemptDatabaseMapper.toEntity(attempt.toBuilder()
+			.status(finalFailure ? RenewalAttemptStatus.FAILED : RenewalAttemptStatus.WAITING_RETRY)
+			.failureReason("Renewal payment confirmation timed out")
+			.nextRetryAt(finalFailure ? null : now.plus(retryProperties.delayForFailure(attempt.getAttemptNumber())))
+			.build()));
+		if (finalFailure && subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+			subscription.setStatus(SubscriptionStatus.SUSPENDED);
+			subscriptionRepository.save(subscription);
+		}
 	}
 
 	@Scheduled(cron = "${subscriptions.pending-payment-expiration.cron:0 */5 * * * *}", zone = "UTC")

@@ -2,13 +2,16 @@ package com.fernando.sistema_assinaturas.entrypoint.api.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fernando.sistema_assinaturas.core.domain.model.CheckoutResult;
 import com.fernando.sistema_assinaturas.core.domain.model.PaymentStatus;
+import com.fernando.sistema_assinaturas.core.domain.model.Plan;
 import com.fernando.sistema_assinaturas.core.usecase.CreateCheckoutUseCase;
+import com.fernando.sistema_assinaturas.config.InfinitePayProperties;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,9 @@ class CheckoutControllerTest {
 
 	@MockBean
 	private CreateCheckoutUseCase createCheckoutUseCase;
+
+	@MockBean
+	private InfinitePayProperties infinitePayProperties;
 
 	@Test
 	void returnsCheckoutUrl() throws Exception {
@@ -46,5 +52,15 @@ class CheckoutControllerTest {
 		mockMvc.perform(post("/api/v1/subscriptions/not-a-uuid/checkout")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void returnsConfiguredInfinitePayCheckoutUrl() throws Exception {
+		when(infinitePayProperties.configuredCheckoutUrl(Plan.BASICO))
+			.thenReturn("https://checkout.infinitepay.io/example");
+
+		mockMvc.perform(get("/api/v1/subscriptions/checkout-url").param("plan", "BASICO"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.checkoutUrl").value("https://checkout.infinitepay.io/example"));
 	}
 }

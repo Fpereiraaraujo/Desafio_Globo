@@ -9,6 +9,7 @@ import com.fernando.sistema_assinaturas.core.domain.model.Subscription;
 import com.fernando.sistema_assinaturas.core.domain.model.SubscriptionStatus;
 import com.fernando.sistema_assinaturas.core.domain.param.UpdatePaymentStatusParam;
 import com.fernando.sistema_assinaturas.core.service.SubscriptionRenewalService;
+import com.fernando.sistema_assinaturas.config.RenewalRetryProperties;
 import com.fernando.sistema_assinaturas.core.usecase.UpdatePaymentStatusUseCase;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.PaymentTransactionDatabaseMapper;
 import com.fernando.sistema_assinaturas.dataprovider.database.mapper.RenewalAttemptDatabaseMapper;
@@ -34,6 +35,7 @@ public class UpdatePaymentStatusUseCaseImp implements UpdatePaymentStatusUseCase
 	private final SubscriptionRepository subscriptionRepository;
 	private final RenewalAttemptRepository renewalAttemptRepository;
 	private final SubscriptionRenewalService subscriptionRenewalService;
+	private final RenewalRetryProperties retryProperties;
 	private final Clock clock = Clock.systemUTC();
 
 	@Override
@@ -132,12 +134,14 @@ public class UpdatePaymentStatusUseCaseImp implements UpdatePaymentStatusUseCase
 		if (payment.getStatus() == PaymentStatus.DECLINED
 			|| payment.getStatus() == PaymentStatus.FAILED
 			|| payment.getStatus() == PaymentStatus.EXPIRED) {
+			boolean finalFailure = attempt.getAttemptNumber() >= RenewalPolicy.defaultPolicy().maxAttempts();
 			attempt = attempt.toBuilder()
-				.status(RenewalAttemptStatus.FAILED)
+				.status(finalFailure ? RenewalAttemptStatus.FAILED : RenewalAttemptStatus.WAITING_RETRY)
 				.failureReason(payment.getFailureReason() != null ? payment.getFailureReason() : payment.getStatus().name())
+				.nextRetryAt(finalFailure ? null : Instant.now(clock).plus(retryProperties.delayForFailure(attempt.getAttemptNumber())))
 				.build();
 			renewalAttemptRepository.save(RenewalAttemptDatabaseMapper.toEntity(attempt));
-			if (attempt.isFinalFailure(RenewalPolicy.defaultPolicy().maxAttempts())
+			if (finalFailure
 				&& subscription.getStatus() == SubscriptionStatus.ACTIVE) {
 				subscriptionRepository.save(SubscriptionDatabaseMapper.toEntity(subscription.suspend()));
 			}

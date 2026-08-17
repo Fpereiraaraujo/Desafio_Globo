@@ -18,6 +18,7 @@ public final class RenewalAttemptDatabaseMapper {
 			.idempotencyKey(attempt.getIdempotencyKey())
 			.failureReason(attempt.getFailureReason())
 			.attemptedAt(attempt.getAttemptedAt())
+			.nextRetryAt(attempt.getNextRetryAt())
 			.build();
 }
 
@@ -31,6 +32,7 @@ public final class RenewalAttemptDatabaseMapper {
 			.idempotencyKey(entity.getIdempotencyKey())
 			.failureReason(entity.getFailureReason())
 			.attemptedAt(entity.getAttemptedAt())
+			.nextRetryAt(entity.getNextRetryAt())
 			.build();
 	}
 }

@@ -70,7 +70,7 @@ class SubscriptionRenewalSchedulerTest {
 	}
 
 	@Test
-	void executesRemainingAttemptsWhenPaymentsFail() {
+	void executesOnlyOneAttemptPerSchedulerRun() {
 		UUID subscriptionId = UUID.randomUUID();
 		LocalDate dueDate = LocalDate.of(2026, 9, 12);
 		when(subscriptionRepository.findAllByStatusAndExpirationDate(SubscriptionStatus.ACTIVE, dueDate))
@@ -83,7 +83,7 @@ class SubscriptionRenewalSchedulerTest {
 			Clock.fixed(Instant.parse("2026-09-12T12:00:00Z"), ZoneOffset.UTC))
 			.processDueSubscriptions();
 
-		verify(processRenewalUseCase, times(3)).execute(org.mockito.ArgumentMatchers.any());
+		verify(processRenewalUseCase, times(1)).execute(org.mockito.ArgumentMatchers.any());
 	}
 
 	private RenewalProcessingResult failedResult(UUID subscriptionId, LocalDate dueDate, int attemptNumber) {

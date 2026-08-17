@@ -66,6 +66,18 @@ class SubscriptionRenewalProcessingServiceTest {
 		assertThat(result.subscription().getExpirationDate()).isEqualTo(LocalDate.of(2026, 9, 12));
 	}
 
+	@Test
+	void schedulesRetryAfterFirstPaymentFailure() {
+		Subscription subscription = subscription();
+		when(paymentGateway.charge(subscription, subscription.getId() + ":2026-09-12:attempt:1"))
+			.thenReturn(PaymentStatus.DECLINED);
+
+		var result = service.process(subscription, 1);
+
+		assertThat(result.attempt().getStatus()).isEqualTo(RenewalAttemptStatus.WAITING_RETRY);
+		assertThat(result.attempt().getNextRetryAt()).isEqualTo(Instant.parse("2026-09-12T12:30:00Z"));
+	}
+
 	private Subscription subscription() {
 		return Subscription.create(UUID.randomUUID(), UUID.randomUUID(), Plan.PREMIUM, LocalDate.of(2026, 8, 12));
 	}
