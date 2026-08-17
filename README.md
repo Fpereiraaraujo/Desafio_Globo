@@ -15,6 +15,7 @@ Em dois terminais:
 cd back
 docker compose up -d
 ./gradlew bootRun
+
 ```
 
 ```bash
