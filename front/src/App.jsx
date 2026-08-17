@@ -11,6 +11,7 @@ const PLAN_DETAILS = {
 
 const STATUS_LABEL = {
   ACTIVE: 'ATIVA',
+  PENDING_PAYMENT: 'AGUARDANDO PAGAMENTO',
   CANCELED: 'CANCELADA',
   SUSPENDED: 'SUSPENSA',
   EXPIRED: 'EXPIRADA',
@@ -50,12 +51,37 @@ function App() {
       .then((data) => setPlans(data))
       .catch(() => setNotice({ type: 'warning', message: 'API indisponível. Inicie o backend para usar o fluxo completo.' }))
 
-    const subscriptionId = localStorage.getItem(STORAGE_KEY)
-    if (!subscriptionId) return
+    function loadSubscription() {
+      const subscriptionId = localStorage.getItem(STORAGE_KEY)
+      if (!subscriptionId) {
+        setSubscription(null)
+        return
+      }
 
-    request(`/subscriptions/${subscriptionId}`)
-      .then(setSubscription)
-      .catch(() => localStorage.removeItem(STORAGE_KEY))
+      request(`/subscriptions/${subscriptionId}`)
+        .then(setSubscription)
+        .catch(() => {
+          localStorage.removeItem(STORAGE_KEY)
+          setSubscription(null)
+        })
+    }
+
+    loadSubscription()
+
+    function handlePaymentUpdated(event) {
+      if (event.origin !== window.location.origin || event.data?.type !== 'PAYMENT_UPDATED') return
+
+      loadSubscription()
+      setNotice({
+        type: event.data.status === 'APPROVED' ? 'success' : 'error',
+        message: event.data.status === 'APPROVED'
+          ? 'Pagamento aprovado. Sua assinatura está ativa.'
+          : 'Pagamento recusado. A assinatura continua aguardando pagamento.',
+      })
+    }
+
+    window.addEventListener('message', handlePaymentUpdated)
+    return () => window.removeEventListener('message', handlePaymentUpdated)
   }, [])
 
   const currentPlan = useMemo(
@@ -117,14 +143,20 @@ function App() {
     try {
       const checkout = await request(`/subscriptions/${subscription.id}/checkout`, { method: 'POST' })
       if (!checkout.checkoutUrl) throw new Error('Checkout temporariamente indisponível.')
-      const checkoutUrl = checkout.checkoutUrl.startsWith('mock://')
+      const isDemoCheckout = checkout.checkoutUrl.startsWith('mock://')
+      const checkoutUrl = isDemoCheckout
         ? `${window.location.origin}/checkout-demo?${new URLSearchParams({
           plan: subscription.plan,
           amount: subscription.monthlyPriceCents,
           order: checkout.orderNsu,
+          paymentId: checkout.paymentId,
         })}`
         : checkout.checkoutUrl
-      window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
+      if (isDemoCheckout) {
+        window.open(checkoutUrl, '_blank')
+      } else {
+        window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
+      }
       setNotice({ type: 'success', message: 'Checkout aberto em uma nova aba.' })
     } catch (error) {
       setNotice({ type: 'error', message: error.message })
@@ -187,13 +219,13 @@ function App() {
                   <p className="mt-1 font-bold text-stone-900">{formatDate(subscription.expirationDate)}</p>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <button disabled={busy} onClick={openCheckout} className="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50">Ir para checkout</button>
+                  {(subscription.status === 'ACTIVE' || subscription.status === 'PENDING_PAYMENT') && <button disabled={busy} onClick={openCheckout} className="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50">Ir para checkout</button>}
                   {subscription.status === 'ACTIVE' && <button disabled={busy} onClick={cancelSubscription} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-50 disabled:opacity-50">Cancelar renovação</button>}
                 </div>
               </>
             ) : (
               <div className="mt-6 rounded-2xl bg-stone-50 p-5">
-                <p className="font-bold text-stone-900">Nenhuma assinatura ativa.</p>
+                <p className="font-bold text-stone-900">Nenhuma assinatura ativa ou aguardando pagamento.</p>
                 <p className="mt-2 text-sm leading-6 text-stone-500">Escolha um plano ao lado para começar a demonstração.</p>
               </div>
             )}
@@ -251,6 +283,36 @@ function CheckoutDemo() {
 	const plan = params.get('plan') ?? 'PREMIUM'
 	const amount = Number(params.get('amount') ?? 3990) / 100
 	const order = params.get('order') ?? 'pedido-demo'
+	const paymentId = params.get('paymentId')
+	const [status, setStatus] = useState('PENDING')
+	const [busy, setBusy] = useState(false)
+	const [error, setError] = useState(null)
+
+	async function updatePayment(nextStatus) {
+		if (!paymentId) {
+			setError('Pagamento demonstrativo não identificado.')
+			return
+		}
+
+		setBusy(true)
+		setError(null)
+		try {
+			await request(`/demo/payments/${paymentId}/status`, {
+				method: 'POST',
+				body: JSON.stringify({ status: nextStatus }),
+			})
+			setStatus(nextStatus)
+			window.opener?.postMessage(
+				{ type: 'PAYMENT_UPDATED', paymentId, status: nextStatus },
+				window.location.origin,
+			)
+			window.close()
+		} catch (requestError) {
+			setError(requestError.message)
+		} finally {
+			setBusy(false)
+		}
+	}
 
 	return (
 		<main className="grid min-h-screen place-items-center bg-stone-100 px-5 py-10">
@@ -268,12 +330,13 @@ function CheckoutDemo() {
 						</div>
 						<p className="text-xl font-black text-stone-900">{amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
 					</div>
-					<p className="mt-6 text-sm font-bold text-stone-800">Selecione como deseja pagar</p>
+					<p className="mt-6 text-sm font-bold text-stone-800">Selecione o resultado do pagamento</p>
 					<div className="mt-3 grid gap-3">
-						<button className="rounded-xl border border-stone-200 px-4 py-3 text-left text-sm font-bold text-stone-800">Pix</button>
-						<button className="rounded-xl border border-stone-200 px-4 py-3 text-left text-sm font-bold text-stone-800">Cartão de crédito</button>
+						<button disabled={busy || status !== 'PENDING'} onClick={() => updatePayment('APPROVED')} className="rounded-xl bg-emerald-700 px-4 py-3 text-left text-sm font-bold text-white disabled:opacity-50">Aprovar pagamento</button>
+						<button disabled={busy || status !== 'PENDING'} onClick={() => updatePayment('DECLINED')} className="rounded-xl border border-red-200 px-4 py-3 text-left text-sm font-bold text-red-700 disabled:opacity-50">Recusar pagamento</button>
 					</div>
-					<button onClick={() => window.close()} className="mt-6 w-full rounded-xl bg-[#5b2c83] px-4 py-3 text-sm font-bold text-white">Concluir demonstração</button>
+					{error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p>}
+					{status !== 'PENDING' && <p className="mt-4 rounded-xl bg-stone-100 px-4 py-3 text-sm font-medium text-stone-700">Resultado registrado: {status === 'APPROVED' ? 'aprovado' : 'recusado'}.</p>}
 				</div>
 			</section>
 		</main>
